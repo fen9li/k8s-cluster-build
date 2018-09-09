@@ -6,7 +6,7 @@ This is a demo project to record the process of how to build Kubernetes cluster 
 * Nodes design
 
 | Hostname | IP Address | Note |
-| --- | --- |
+| ---- | ---- | ----|
 | docker101.fen9.li | 192.168.200.101 |	master node |
 | docker102.fen9.li | 192.168.200.102 |	worker node |
 
