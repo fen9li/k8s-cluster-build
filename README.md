@@ -4,6 +4,7 @@ This is a demo project to record the process of how to build Kubernetes cluster 
 ## Prepare nodes
 
 * Nodes design
+
 | Hostname | IP Address | Note|
 | --- | --- |
 | docker101.fen9.li | 192.168.200.101 |	master node |
