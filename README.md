@@ -334,4 +334,5 @@ kube-system   kube-scheduler-docker101.fen9.li            1/1       Running   1 
 ```
 
 ## Where to go next
-Can deploy application now
+* Build more worker nodes and join the cluster
+* Start to deploy application
