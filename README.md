@@ -38,7 +38,7 @@ systemctl daemon-reload
 systemctl restart docker                                             
 ```
 
-*Ensure docker is running and its Cgroup Driver is systemd
+* Ensure docker is running and its Cgroup Driver is systemd
 ```
 [root@docker101 ~]# systemctl is-active docker
 active
@@ -334,4 +334,4 @@ kube-system   kube-scheduler-docker101.fen9.li            1/1       Running   1 
 ```
 
 ## Where to go next
-Deploy application
+Can deploy application now
