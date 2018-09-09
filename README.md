@@ -4,19 +4,12 @@ This is a demo project to record the process of how to build Kubernetes cluster 
 ## Prepare nodes
 
 * Nodes design
-
-| Hostname | IP Address | Note |
-| ---- | ---- | ----|
+| Hostname | IP Address | Note|
+| ---- | ---- | ---- |
 | docker101.fen9.li | 192.168.200.101 |	master node |
 | docker102.fen9.li | 192.168.200.102 |	worker node |
 
-* Ensure 2 nodes can see each other
-```
-[root@docker101 ~]# tail -2 /etc/hosts
-192.168.200.101   docker101.fen9.li docker101
-192.168.200.102   docker102.fen9.li docker102
-[root@docker101 ~]#
-```
+* Ensure 2 nodes can ping each other
 
 ### Setup docker on 2 nodes
 * Install docker and start/enable docker service by running following commands
@@ -29,6 +22,8 @@ systemctl enable docker
 
 * Change docker cgroup driver to systemd by following below process
 ```
+[root@docker101 ~]# docker info | grep -i cgroup
+Cgroup Driver: cgroupfs
 [root@docker101 ~]# cp /usr/lib/systemd/system/docker.service /etc/systemd/system        
 [root@docker101 ~]# vim /etc/systemd/system/docker.service
 [root@docker101 ~]# diff /usr/lib/systemd/system/docker.service /etc/systemd/system/docker.service
@@ -166,6 +161,114 @@ firewall-cmd --reload
 ssh dhcpv6-client kubernetes-worker
 [root@docker102 ~]#
 ```
+
+## Setup Kubernetes cluster
+### On Kubernetes master node
+* Initiate cluster
+```
+[root@docker101 ~]# kubeadm init --apiserver-advertise-address=192.168.200.101 --pod-network-cidr=10.10.0.0/16
+[init] using Kubernetes version: v1.11.2
+[preflight] running pre-flight checks
+        [WARNING Firewalld]: firewalld is active, please ensure ports [6443 10250] are open or your cluster may not function correctly
+I0907 23:18:18.083378   27894 kernel_validator.go:81] Validating kernel version
+I0907 23:18:18.083561   27894 kernel_validator.go:96] Validating kernel config
+        [WARNING SystemVerification]: docker version is greater than the most recently validated version. Docker version: 18.06.1-ce. Max validated version: 17.03
+[preflight/images] Pulling images required for setting up a Kubernetes cluster
+[preflight/images] This might take a minute or two, depending on the speed of your internet connection
+[preflight/images] You can also perform this action in beforehand using 'kubeadm config images pull'
+[kubelet] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[kubelet] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[preflight] Activating the kubelet service
+[certificates] Generated ca certificate and key.
+[certificates] Generated apiserver certificate and key.
+[certificates] apiserver serving cert is signed for DNS names [docker101.fen9.li kubernetes kubernetes.default kubernetes.default.svc kubernetes.default.svc.cluster.local] and IPs [10.96.0.1 192.168.200.101]
+[certificates] Generated apiserver-kubelet-client certificate and key.
+[certificates] Generated sa key and public key.
+[certificates] Generated front-proxy-ca certificate and key.
+[certificates] Generated front-proxy-client certificate and key.
+[certificates] Generated etcd/ca certificate and key.
+[certificates] Generated etcd/server certificate and key.
+[certificates] etcd/server serving cert is signed for DNS names [docker101.fen9.li localhost] and IPs [127.0.0.1 ::1]
+[certificates] Generated etcd/peer certificate and key.
+[certificates] etcd/peer serving cert is signed for DNS names [docker101.fen9.li localhost] and IPs [192.168.200.101 127.0.0.1 ::1]
+[certificates] Generated etcd/healthcheck-client certificate and key.
+[certificates] Generated apiserver-etcd-client certificate and key.
+[certificates] valid certificates and keys now exist in "/etc/kubernetes/pki"
+[kubeconfig] Wrote KubeConfig file to disk: "/etc/kubernetes/admin.conf"
+[kubeconfig] Wrote KubeConfig file to disk: "/etc/kubernetes/kubelet.conf"
+[kubeconfig] Wrote KubeConfig file to disk: "/etc/kubernetes/controller-manager.conf"
+[kubeconfig] Wrote KubeConfig file to disk: "/etc/kubernetes/scheduler.conf"
+[controlplane] wrote Static Pod manifest for component kube-apiserver to "/etc/kubernetes/manifests/kube-apiserver.yaml"
+[controlplane] wrote Static Pod manifest for component kube-controller-manager to "/etc/kubernetes/manifests/kube-controller-manager.yaml"
+[controlplane] wrote Static Pod manifest for component kube-scheduler to "/etc/kubernetes/manifests/kube-scheduler.yaml"
+[etcd] Wrote Static Pod manifest for a local etcd instance to "/etc/kubernetes/manifests/etcd.yaml"
+[init] waiting for the kubelet to boot up the control plane as Static Pods from directory "/etc/kubernetes/manifests"
+[init] this might take a minute or longer if the control plane images have to be pulled
+[apiclient] All control plane components are healthy after 58.007160 seconds
+[uploadconfig] storing the configuration used in ConfigMap "kubeadm-config" in the "kube-system" Namespace
+[kubelet] Creating a ConfigMap "kubelet-config-1.11" in namespace kube-system with the configuration for the kubelets in the cluster
+[markmaster] Marking the node docker101.fen9.li as master by adding the label "node-role.kubernetes.io/master=''"
+[markmaster] Marking the node docker101.fen9.li as master by adding the taints [node-role.kubernetes.io/master:NoSchedule]
+[patchnode] Uploading the CRI Socket information "/var/run/dockershim.sock" to the Node API object "docker101.fen9.li" as an annotation
+[bootstraptoken] using token: eam0t9.lb01oj8vt7ms4cja
+[bootstraptoken] configured RBAC rules to allow Node Bootstrap tokens to post CSRs in order for nodes to get long term certificate credentials
+[bootstraptoken] configured RBAC rules to allow the csrapprover controller automatically approve CSRs from a Node Bootstrap Token
+[bootstraptoken] configured RBAC rules to allow certificate rotation for all node client certificates in the cluster
+[bootstraptoken] creating the "cluster-info" ConfigMap in the "kube-public" namespace
+[addons] Applied essential addon: CoreDNS
+[addons] Applied essential addon: kube-proxy
+
+Your Kubernetes master has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+You should now deploy a pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+You can now join any number of machines by running the following on each node as root:
+
+  kubeadm join 192.168.200.101:6443 --token eam0t9.lb01oj8vt7ms4cja --discovery-token-ca-cert-hash sha256:e41523ead31df5ec4fa69b5616f502e29e9faf53a6dc3265e8f97376d30799cd
+
+[root@docker101 ~]# exit
+
+[fli@docker101 ~]$ 
+...
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+```
+
+* Ensure Kubernetes is up and running
+```
+[fli@docker101 ~]$ kubectl version
+Client Version: version.Info{Major:"1", Minor:"11", GitVersion:"v1.11.2", GitCommit:"bb9ffb1654d4a729bb4cec18ff088eacc153c239", GitTreeState:"clean", BuildDate:"2018-08-07T23:17:28Z", GoVersion:"go1.10.3", Compiler:"gc", Platform:"linux/amd64"}
+Server Version: version.Info{Major:"1", Minor:"11", GitVersion:"v1.11.2", GitCommit:"bb9ffb1654d4a729bb4cec18ff088eacc153c239", GitTreeState:"clean", BuildDate:"2018-08-07T23:08:19Z", GoVersion:"go1.10.3", Compiler:"gc", Platform:"linux/amd64"}
+[fli@docker101 ~]$
+
+[fli@docker101 ~]$ kubectl get nodes
+NAME                STATUS    ROLES     AGE       VERSION
+docker101.fen9.li   Ready     master    49m       v1.11.2
+[fli@docker101 ~]$
+
+[fli@docker101 ~]$ kubectl get pods --all-namespaces
+NAMESPACE     NAME                                        READY     STATUS    RESTARTS   AGE
+kube-system   coredns-78fcdf6894-ps5vv                    1/1       Running   0          43m
+kube-system   coredns-78fcdf6894-vfr75                    1/1       Running   0          43m
+kube-system   etcd-docker101.fen9.li                      1/1       Running   0          42m
+kube-system   kube-apiserver-docker101.fen9.li            1/1       Running   0          42m
+kube-system   kube-controller-manager-docker101.fen9.li   1/1       Running   0          43m
+kube-system   kube-flannel-ds-amd64-mh7sg                 1/1       Running   0          3m
+kube-system   kube-proxy-dtq8f                            1/1       Running   0          43m
+kube-system   kube-scheduler-docker101.fen9.li            1/1       Running   0          42m
+[fli@docker101 ~]$
+``` 
+
 
 
 
