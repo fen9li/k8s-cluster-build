@@ -10,9 +10,9 @@ A demo project on how to build Kubernetes cluster and deploy a wordpress app.
 | kube31.fen9.li | 192.168.200.31 |	master node |
 | kube32.fen9.li | 192.168.200.32 |	worker node |
 
-* Ensure 2 nodes can ping each other
+* Ensure all nodes in the cluster can ping each other
 
-### Setup docker on 2 nodes
+### Setup docker on all nodes
 * Install docker and start/enable docker service by running following commands
 ```
 wget https://download.docker.com/linux/centos/docker-ce.repo -O /etc/yum.repos.d/docker-ce.repo
@@ -96,9 +96,16 @@ kube31.fen9.li   Ready     master    49m       v1.11.2
 ``` 
 
 ### On Kubernetes worker node
+* In case join token losted
+```
+[fli@kube31 k8s-cluster-build]$ kubeadm token create --print-join-command
+kubeadm join 192.168.200.31:6443 --token 0a8h56.hf12gyt8b8n3kmyl --discovery-token-ca-cert-hash sha256:74a6c4df0b72ae505bcf9b8989b88bdbaf35b6e1ca7dd43d7bab81a76a9a5b82
+[fli@kube31 k8s-cluster-build]$
+```
+
 * Join cluster and ensure kubelet service is up
 ```
-sudo kubeadm join 192.168.200.101:6443 --token eam0t9.lb01oj8vt7ms4cja --discovery-token-ca-cert-hash sha256:e41523ead31df5ec4fa69b5616f502e29e9faf53a6dc3265e8f97376d30799cd
+sudo kubeadm join 192.168.200.31:6443 --token 0a8h56.hf12gyt8b8n3kmyl --discovery-token-ca-cert-hash sha256:74a6c4df0b72ae505bcf9b8989b88bdbaf35b6e1ca7dd43d7bab81a76a9a5b82
 
 [fli@kube32 ~]$ sudo systemctl is-active kubelet
 [sudo] password for fli:
@@ -114,7 +121,36 @@ kube31.fen9.li   Ready     master    10h       v1.11.2
 kube32.fen9.li   Ready     <none>    4m        v1.11.2
 [fli@kube31 ~]$
 
-kubectl get all --all-namespaces
+[fli@kube31 k8s-cluster-build]$ kubectl get all -n kube-system
+NAME                                         READY   STATUS     RESTARTS   AGE
+pod/coredns-576cbf47c7-x47gj                 1/1     Running    11         7d23h
+pod/coredns-576cbf47c7-xv8wv                 1/1     Running    11         7d23h
+pod/etcd-kube31.fen9.li                      1/1     Running    10         7d23h
+pod/kube-apiserver-kube31.fen9.li            1/1     Running    15         7d23h
+pod/kube-controller-manager-kube31.fen9.li   1/1     Running    14         7d23h
+pod/kube-flannel-ds-amd64-l2jk5              1/1     Running    13         7d23h
+pod/kube-flannel-ds-amd64-t7svm              1/1     Running    12         7d22h
+pod/kube-proxy-4b52r                         1/1     Running    10         7d23h
+pod/kube-proxy-f4lm6                         1/1     Running    10         7d22h
+pod/kube-scheduler-kube31.fen9.li            1/1     Running    15         7d23h
+
+NAME               TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)         AGE
+service/kube-dns   ClusterIP   10.96.0.10   <none>        53/UDP,53/TCP   7d23h
+
+NAME                                     DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR                     AGE
+daemonset.apps/kube-flannel-ds-amd64     2         2         2       3            2           beta.kubernetes.io/arch=amd64     7d23h
+daemonset.apps/kube-flannel-ds-arm       0         0         0       0            0           beta.kubernetes.io/arch=arm       7d23h
+daemonset.apps/kube-flannel-ds-arm64     0         0         0       0            0           beta.kubernetes.io/arch=arm64     7d23h
+daemonset.apps/kube-flannel-ds-ppc64le   0         0         0       0            0           beta.kubernetes.io/arch=ppc64le   7d23h
+daemonset.apps/kube-flannel-ds-s390x     0         0         0       0            0           beta.kubernetes.io/arch=s390x     7d23h
+daemonset.apps/kube-proxy                2         2         2       3            2           <none>                            7d23h
+
+NAME                      DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/coredns   2         2         2            2           7d23h
+
+NAME                                 DESIRED   CURRENT   READY   AGE
+replicaset.apps/coredns-576cbf47c7   2         2         2       7d23h
+[fli@kube31 k8s-cluster-build]$
 ```
 
 ## Deploy WordPress on this k8s cluster
@@ -124,7 +160,7 @@ git clone -b develop git@github.com:fen9li/k8s-cluster-build.git
 cd k8s-cluster-build/
 ```
 
-* Delete namespace 'wordpress' if it exists
+* Tear down namespace 'wordpress' if it exists
 ```
 kubectl delete ns wordpress
 ```
@@ -135,8 +171,6 @@ kubectl create -f wp-namespace.yaml -f mariadb-deployment.yaml -f mariadb-servic
 ```
 
 * Check resources/objects in namespace wordpress
-> Service wordpress TYPE - NodePort
-> Port mapped on node - 31764
 
 ```
 [fli@kube31 k8s-cluster-build]$ kubectl get all -n wordpress
@@ -159,13 +193,26 @@ replicaset.apps/wordpress-748465d6cf   1         1         1       104s
 ```
 
 ## Check out this new wordpress installation 
+
+> Test out below URL:
+
+> http://192.168.200.32:31764
+
 * ![Test out url 'http://192.168.200.32:31764'](images/k8s_01.png)
 
-* ![Enter below when prompt](images/k8s_02.png) 
+> Enter below and click 'Submit' button
+
 > Database Name: wordpress
+
 > Username: root
+
 > Password: aStr0ngPassW0rd
+
 > Database Host: mysql or mysql.wordpress.svc.cluster.local
+
+* ![Enter below when prompt](images/k8s_02.png) 
+
+> Once 'Run the installation' button can be clicked, it proves that the wordpress web pod can consume mysql service 
 
 * ![wordpress web container can consume mysql service](images/k8s_03.png)
 
