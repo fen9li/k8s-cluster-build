@@ -1,4 +1,4 @@
-# Build a 2-nodes Kubernetes Cluster
+# Build Kubernetes Cluster and Deploy WordPress 
 A demo project on how to build Kubernetes cluster and deploy a wordpress app. 
 
 ## Prepare nodes
